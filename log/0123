@@ -1,0 +1,911 @@
+    ______              __                _
+   / ____/___   ____ _ / /_ __  __ _____ (_)____  ___
+  / /_   / _ \ / __ `// __// / / // ___// //_  / / _ \
+ / __/  /  __// /_/ // /_ / /_/ // /   / /  / /_/  __/
+/_/     \___/ \__,_/ \__/ \__,_//_/   /_/  /___/\___/
+======================================================
+
+【目录及作用】
+
++------------------+---------------------------------+---------+---------------------------------------------------------+
+|  目录名称        | 路径                            | IO 性能 |  说明                                                   |
++------------------+---------------------------------+---------+---------------------------------------------------------+
+|  云端同步目录    |  /home/featurize/work           | 慢      |  云同步盘中的数据会一直跟随用户，不会随实例退还被销毁， |
+|                  |                                 |         |  但其读取/写入性能非常差。                              |
+|                  |                                 |         |  所以一定不要在这里保存数据集，否则会严重影响训练性能   |
++------------------+---------------------------------+---------+---------------------------------------------------------+
+|  数据集下载目录  |  /home/featurize/data           | 快      |  添加数据集会下载并解压至此目录，该目录磁盘为本地高速   |
+|                  |                                 |         |  磁盘，因此读写很快。实例销毁后自动删除                 | 
++------------------+---------------------------------+---------+---------------------------------------------------------+
+|  其他目录        |  N / A                          | 快      |  其他目录均为本地高速磁盘，实例销毁后自动删除           |
++------------------+---------------------------------+---------+---------------------------------------------------------+
+
+【最佳实践】
+
+ ✅  始终使用数据集功能来添加数据，添加完成后直接使用，不要再移动数据的位置。
+ ✅  始终将代码保存至「云端同步目录」中。
+ ✅  重要的模型文件保存在「云端同步目录」，不重要的模型文件保存在其他位置。
+ ✅  始终使用 pip 安装依赖，而不是用 conda，如无必要，不要创建虚拟环境，除非你知道自己在做什么。
+ ✅  常用的包可使用 pip install --user xxx 安装，这样下次使用无需重复安装。 
+
+【注意事项】
+
+ ⛔️  云端同步目录（work目录）有配额限制，超过配额将产生费用。具体的额度可点击右上角的头像确认，用量请使用 `du -sh ~/work/` 查看。
+ ⛔️  请不要删除 conda 的 base 环境，这会导致无法访问工作区。
+ ⛔️  Featurize 禁止挖矿，请不要使用 featurize 的实例挖矿，一经发现直接封号恕不退款。
+
+
+
+ %                                                                                                                                                   
+(base) ➜  Time-Series-Library git:(main) ✗  conda env list
+# conda environments:
+#
+base                  *  /environment/miniconda3
+
+(base) ➜  Time-Series-Library git:(main) ✗ conda create --name times
+(base) ➜  Time-Series-Library git:(main) ✗ pip install --user -r requirements.txt 
+Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+Collecting einops==0.4.0 (from -r requirements.txt (line 1))
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/66/6f/fb90ccb765bc521d363f605aaddb4c4169891d431b9c6fed0451c5a533f5/einops-0.4.0-py3-none-any.whl (28 kB)
+Collecting matplotlib==3.7.0 (from -r requirements.txt (line 2))
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/05/da/0b3bdae60e27b99d22a044f63de323988c7343b787734ca76e41de48cf9b/matplotlib-3.7.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (11.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.6/11.6 MB 118.6 MB/s eta 0:00:00
+Collecting numpy==1.23.5 (from -r requirements.txt (line 3))
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/e4/f3/679b3a042a127de0d7c84874913c3e23bb84646eb3bc6ecab3f8c872edc9/numpy-1.23.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (17.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17.1/17.1 MB 119.4 MB/s eta 0:00:00
+Collecting pandas==1.5.3 (from -r requirements.txt (line 4))
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/49/e2/79e46612dc25ebc7603dc11c560baa7266c90f9e48537ecf1a02a0dd6bff/pandas-1.5.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (12.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.1/12.1 MB 115.7 MB/s eta 0:00:00
+Collecting patool==1.12 (from -r requirements.txt (line 5))
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/43/94/52243ddff508780dd2d8110964320ab4851134a55ab102285b46e740f76a/patool-1.12-py2.py3-none-any.whl (77 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 77.5/77.5 kB 87.4 MB/s eta 0:00:00
+Collecting reformer-pytorch==1.4.4 (from -r requirements.txt (line 6))
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/42/15/80280e06afc2b8a1b1289a3bec91bea2ec9989a23e4dd36465a679f06ff2/reformer_pytorch-1.4.4-py3-none-any.whl (16 kB)
+Collecting scikit-learn==1.2.2 (from -r requirements.txt (line 7))
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/fa/1e/36d7609e84b50d4a2e5bc43cd5013d9ea885799e5813a1e9cf5bb1afd3f4/scikit_learn-1.2.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (9.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.6/9.6 MB 113.8 MB/s eta 0:00:00
+Collecting scipy==1.10.1 (from -r requirements.txt (line 8))
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/1f/4b/3bacad9a166350cb2e518cea80ab891016933cc1653f15c90279512c5fa9/scipy-1.10.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (34.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 34.4/34.4 MB 109.7 MB/s eta 0:00:00
+Collecting sktime==0.16.1 (from -r requirements.txt (line 9))
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/b6/6a/b943993f75aa617451f5f9726e1cf86936853fe3afa4717e55ef9af46668/sktime-0.16.1-py3-none-any.whl (16.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.0/16.0 MB 118.0 MB/s eta 0:00:00
+Requirement already satisfied: sympy==1.11.1 in /environment/miniconda3/lib/python3.10/site-packages (from -r requirements.txt (line 10)) (1.11.1)
+ERROR: Ignored the following versions that require a different python version: 0.10.0 Requires-Python >=3.7,<3.10; 0.10.1 Requires-Python >=3.7,<3.10; 0.11.0 Requires-Python >=3.7,<3.10; 0.11.1 Requires-Python >=3.7,<3.10; 0.11.2 Requires-Python >=3.7,<3.10; 0.11.3 Requires-Python >=3.7,<3.10; 0.11.4 Requires-Python >=3.7,<3.10; 0.12.0 Requires-Python >=3.7,<3.10; 0.12.1 Requires-Python >=3.7,<3.10; 1.6.2 Requires-Python >=3.7,<3.10; 1.6.3 Requires-Python >=3.7,<3.10; 1.7.0 Requires-Python >=3.7,<3.10; 1.7.1 Requires-Python >=3.7,<3.10
+ERROR: Could not find a version that satisfies the requirement torch==1.7.1 (from versions: 1.11.0, 1.12.0, 1.12.1, 1.13.0, 1.13.1, 2.0.0, 2.0.1, 2.1.0, 2.1.1, 2.1.2)
+ERROR: No matching distribution found for torch==1.7.1
+(base) ➜  Time-Series-Library git:(main) ✗ conda create --name timesnet python=3.8
+Collecting package metadata (current_repodata.json): done
+Solving environment: done
+
+
+==> WARNING: A newer version of conda exists. <==
+  current version: 23.7.2
+  latest version: 23.11.0
+
+Please update conda by running
+
+    $ conda update -n base -c defaults conda
+
+Or to minimize the number of packages updated during conda update use
+
+     conda install conda=23.11.0
+
+
+
+## Package Plan ##
+
+  environment location: /environment/miniconda3/envs/timesnet
+
+  added / updated specs:
+    - python=3.8
+
+
+The following packages will be downloaded:
+
+    package                    |            build
+    ---------------------------|-----------------
+    ca-certificates-2023.12.12 |       h06a4308_0         126 KB
+    openssl-3.0.12             |       h7f8727e_0         5.2 MB
+    pip-23.3.1                 |   py38h06a4308_0         2.6 MB
+    python-3.8.18              |       h955ad1f_0        25.3 MB
+    setuptools-68.2.2          |   py38h06a4308_0         948 KB
+    wheel-0.41.2               |   py38h06a4308_0         108 KB
+    xz-5.4.5                   |       h5eee18b_0         646 KB
+    ------------------------------------------------------------
+                                           Total:        34.8 MB
+
+The following NEW packages will be INSTALLED:
+
+  _libgcc_mutex      pkgs/main/linux-64::_libgcc_mutex-0.1-main 
+  _openmp_mutex      pkgs/main/linux-64::_openmp_mutex-5.1-1_gnu 
+  ca-certificates    pkgs/main/linux-64::ca-certificates-2023.12.12-h06a4308_0 
+  ld_impl_linux-64   pkgs/main/linux-64::ld_impl_linux-64-2.38-h1181459_1 
+  libffi             pkgs/main/linux-64::libffi-3.4.4-h6a678d5_0 
+  libgcc-ng          pkgs/main/linux-64::libgcc-ng-11.2.0-h1234567_1 
+  libgomp            pkgs/main/linux-64::libgomp-11.2.0-h1234567_1 
+  libstdcxx-ng       pkgs/main/linux-64::libstdcxx-ng-11.2.0-h1234567_1 
+  ncurses            pkgs/main/linux-64::ncurses-6.4-h6a678d5_0 
+  openssl            pkgs/main/linux-64::openssl-3.0.12-h7f8727e_0 
+  pip                pkgs/main/linux-64::pip-23.3.1-py38h06a4308_0 
+  python             pkgs/main/linux-64::python-3.8.18-h955ad1f_0 
+  readline           pkgs/main/linux-64::readline-8.2-h5eee18b_0 
+  setuptools         pkgs/main/linux-64::setuptools-68.2.2-py38h06a4308_0 
+  sqlite             pkgs/main/linux-64::sqlite-3.41.2-h5eee18b_0 
+  tk                 pkgs/main/linux-64::tk-8.6.12-h1ccaba5_0 
+  wheel              pkgs/main/linux-64::wheel-0.41.2-py38h06a4308_0 
+  xz                 pkgs/main/linux-64::xz-5.4.5-h5eee18b_0 
+  zlib               pkgs/main/linux-64::zlib-1.2.13-h5eee18b_0 
+
+
+Proceed ([y]/n)? y
+
+
+Downloading and Extracting Packages
+                                                                                                                                                     
+Preparing transaction: done                                                                                                                          
+Verifying transaction: done                                                                                                                          
+Executing transaction: done                                                                                                                          
+#                                                                                                                                                    
+# To activate this environment, use                                                                                                                  
+#                                                                                                                                                    
+#     $ conda activate timesnet
+#
+# To deactivate an active environment, use
+#
+#     $ conda deactivate
+
+(base) ➜  Time-Series-Library git:(main) ✗ conda activate timesnet
+(timesnet) ➜  Time-Series-Library git:(main) ✗ >....                                                                                                           
+  --seq_len 96 \
+  --label_len 48 \
+  --pred_len 96 \
+  --e_layers 2 \
+  --d_layers 1 \
+  --factor 3 \
+  --enc_in 7 \
+  --dec_in 7 \
+  --c_out 7 \
+  --d_model 16 \
+  --d_ff 32 \
+  --des 'Exp' \
+  --itr 1 \
+  --top_k 5
+
+
+Args in experiment:
+Basic Config
+  Task Name:          long_term_forecast  Is Training:        1                   
+  Model ID:           ETTh1_96_96         Model:              TimesNet            
+
+Data Loader
+  Data:               ETTh1               Root Path:          ./dataset/ETT-small/
+  Data Path:          ETTh1.csv           Features:           M                   
+  Target:             OT                  Freq:               h                   
+  Checkpoints:        ./checkpoints/      
+
+Forecasting Task
+  Seq Len:            96                  Label Len:          48                  
+  Pred Len:           96                  Seasonal Patterns:  Monthly             
+  Inverse:            0                   
+
+Model Parameters
+  Top k:              5                   Num Kernels:        6                   
+  Enc In:             7                   Dec In:             7                   
+  C Out:              7                   d model:            16                  
+  n heads:            8                   e layers:           2                   
+  d layers:           1                   d FF:               32                  
+  Moving Avg:         25                  Factor:             3                   
+  Distil:             1                   Dropout:            0.1                 
+  Embed:              timeF               Activation:         gelu                
+  Output Attention:   0                   
+
+Run Parameters
+  Num Workers:        10                  Itr:                1                   
+  Train Epochs:       10                  Batch Size:         32                  
+  Patience:           3                   Learning Rate:      0.0001              
+  Des:                Exp                 Loss:               MSE                 
+  Lradj:              type1               Use Amp:            0                   
+
+GPU
+  Use GPU:            1                   GPU:                0                   
+  Use Multi GPU:      0                   Devices:            0,1,2,3             
+
+De-stationary Projector Params
+  P Hidden Dims:      128, 128            P Hidden Layers:    2                   
+
+Use GPU: cuda:0
+>>>>>>>start training : long_term_forecast_ETTh1_96_96_TimesNet_ETTh1_ftM_sl96_ll48_pl96_dm16_nh8_el2_dl1_df32_fc3_ebtimeF_dtTrue_Exp_0>>>>>>>>>>>>>>>>>>>>>>>>>>
+Traceback (most recent call last):
+  File "run.py", line 149, in <module>
+    exp.train(setting)
+  File "/home/featurize/work/Time-Series-Library/exp/exp_long_term_forecasting.py", line 80, in train
+    train_data, train_loader = self._get_data(flag='train')
+  File "/home/featurize/work/Time-Series-Library/exp/exp_long_term_forecasting.py", line 28, in _get_data
+    data_set, data_loader = data_provider(self.args, flag)
+  File "/home/featurize/work/Time-Series-Library/data_provider/data_factory.py", line 74, in data_provider
+    data_set = Data(
+  File "/home/featurize/work/Time-Series-Library/data_provider/data_loader.py", line 45, in __init__
+    self.__read_data__()
+  File "/home/featurize/work/Time-Series-Library/data_provider/data_loader.py", line 49, in __read_data__
+    df_raw = pd.read_csv(os.path.join(self.root_path,
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/pandas/util/_decorators.py", line 211, in wrapper
+    return func(*args, **kwargs)
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/pandas/util/_decorators.py", line 331, in wrapper
+    return func(*args, **kwargs)
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/pandas/io/parsers/readers.py", line 950, in read_csv
+    return _read(filepath_or_buffer, kwds)
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/pandas/io/parsers/readers.py", line 605, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/pandas/io/parsers/readers.py", line 1442, in __init__
+    self._engine = self._make_engine(f, self.engine)
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/pandas/io/parsers/readers.py", line 1735, in _make_engine
+    self.handles = get_handle(
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/pandas/io/common.py", line 856, in get_handle
+    handle = open(
+FileNotFoundError: [Errno 2] No such file or directory: './dataset/ETT-small/ETTh1.csv'
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ >....                                                                                          
+  --features M \
+  --seq_len 96 \
+  --label_len 48 \
+  --pred_len 96 \
+  --e_layers 2 \
+  --d_layers 1 \
+  --factor 3 \
+  --enc_in 7 \
+  --dec_in 7 \
+  --c_out 7 \
+  --d_model 16 \
+  --d_ff 32 \
+  --des 'Exp' \
+  --itr 1 \
+  --top_k 5
+Args in experiment:
+Basic Config
+  Task Name:          long_term_forecast  Is Training:        1                   
+  Model ID:           ETTh1_96_96         Model:              TimesNet            
+
+Data Loader
+  Data:               ETTh1               Root Path:          /home/featurize/data/ETT-small/
+  Data Path:          ETTh1.csv           Features:           M                   
+  Target:             OT                  Freq:               h                   
+  Checkpoints:        ./checkpoints/      
+
+Forecasting Task
+  Seq Len:            96                  Label Len:          48                  
+  Pred Len:           96                  Seasonal Patterns:  Monthly             
+  Inverse:            0                   
+
+Model Parameters
+  Top k:              5                   Num Kernels:        6                   
+  Enc In:             7                   Dec In:             7                   
+  C Out:              7                   d model:            16                  
+  n heads:            8                   e layers:           2                   
+  d layers:           1                   d FF:               32                  
+  Moving Avg:         25                  Factor:             3                   
+  Distil:             1                   Dropout:            0.1                 
+  Embed:              timeF               Activation:         gelu                
+  Output Attention:   0                   
+
+Run Parameters
+  Num Workers:        10                  Itr:                1                   
+  Train Epochs:       10                  Batch Size:         32                  
+  Patience:           3                   Learning Rate:      0.0001              
+  Des:                Exp                 Loss:               MSE                 
+  Lradj:              type1               Use Amp:            0                   
+
+GPU
+  Use GPU:            1                   GPU:                0                   
+  Use Multi GPU:      0                   Devices:            0,1,2,3             
+
+De-stationary Projector Params
+  P Hidden Dims:      128, 128            P Hidden Layers:    2                   
+
+Use GPU: cuda:0
+>>>>>>>start training : long_term_forecast_ETTh1_96_96_TimesNet_ETTh1_ftM_sl96_ll48_pl96_dm16_nh8_el2_dl1_df32_fc3_ebtimeF_dtTrue_Exp_0>>>>>>>>>>>>>>>>>>>>>>>>>>
+train 8449
+val 2785
+test 2785
+Traceback (most recent call last):
+  File "run.py", line 149, in <module>
+    exp.train(setting)
+  File "/home/featurize/work/Time-Series-Library/exp/exp_long_term_forecasting.py", line 115, in train
+    dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+RuntimeError: CUDA error: no kernel image is available for execution on the device
+(timesnet) ➜  Time-Series-Library git:(main) ✗ nvidia-smi
+Mon Jan 22 23:09:59 2024       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 525.85.05    Driver Version: 525.85.05    CUDA Version: 12.0     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  NVIDIA GeForce ...  Off  | 00000000:10:00.0 Off |                  N/A |
+| 30%   25C    P8    12W / 170W |      0MiB / 12288MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|  No running processes found                                                 |
++-----------------------------------------------------------------------------+
+(timesnet) ➜  Time-Series-Library git:(main) ✗ conda install torch
+Collecting package metadata (current_repodata.json): done
+Solving environment: unsuccessful initial attempt using frozen solve. Retrying with flexible solve.
+Collecting package metadata (repodata.json): done
+Solving environment: unsuccessful initial attempt using frozen solve. Retrying with flexible solve.
+
+PackagesNotFoundError: The following packages are not available from current channels:
+
+  - torch
+
+Current channels:
+
+  - https://repo.anaconda.com/pkgs/main/linux-64
+  - https://repo.anaconda.com/pkgs/main/noarch
+  - https://repo.anaconda.com/pkgs/r/linux-64
+  - https://repo.anaconda.com/pkgs/r/noarch
+
+To search for alternate channels that may provide the conda package you're
+looking for, navigate to
+
+    https://anaconda.org
+
+and use the search bar at the top of the page.
+
+
+(timesnet) ➜  Time-Series-Library git:(main) ✗ RuntimeError: CUDA error: no kernel image is available for execution on the device
+(timesnet) ➜  Time-Series-Library git:(main) ✗ >....                                                                                          
+  --features M \
+  --seq_len 96 \
+  --label_len 48 \
+  --pred_len 96 \
+  --e_layers 2 \
+  --d_layers 1 \
+  --factor 3 \
+  --enc_in 7 \
+  --dec_in 7 \
+  --c_out 7 \
+  --d_model 16 \
+  --d_ff 32 \
+  --des 'Exp' \
+  --itr 1 \
+  --top_k 5
+Args in experiment:
+Basic Config
+  Task Name:          long_term_forecast  Is Training:        1                   
+  Model ID:           ETTh1_96_96         Model:              TimesNet            
+
+Data Loader
+  Data:               ETTh1               Root Path:          /home/featurize/data/ETT-small/
+  Data Path:          ETTh1.csv           Features:           M                   
+  Target:             OT                  Freq:               h                   
+  Checkpoints:        ./checkpoints/      
+
+Forecasting Task
+  Seq Len:            96                  Label Len:          48                  
+  Pred Len:           96                  Seasonal Patterns:  Monthly             
+  Inverse:            0                   
+
+Model Parameters
+  Top k:              5                   Num Kernels:        6                   
+  Enc In:             7                   Dec In:             7                   
+  C Out:              7                   d model:            16                  
+  n heads:            8                   e layers:           2                   
+  d layers:           1                   d FF:               32                  
+  Moving Avg:         25                  Factor:             3                   
+  Distil:             1                   Dropout:            0.1                 
+  Embed:              timeF               Activation:         gelu                
+  Output Attention:   0                   
+
+Run Parameters
+  Num Workers:        10                  Itr:                1                   
+  Train Epochs:       10                  Batch Size:         32                  
+  Patience:           3                   Learning Rate:      0.0001              
+  Des:                Exp                 Loss:               MSE                 
+  Lradj:              type1               Use Amp:            0                   
+
+GPU
+  Use GPU:            1                   GPU:                0                   
+  Use Multi GPU:      0                   Devices:            0,1,2,3             
+
+De-stationary Projector Params
+  P Hidden Dims:      128, 128            P Hidden Layers:    2                   
+
+Use GPU: cuda:0
+>>>>>>>start training : long_term_forecast_ETTh1_96_96_TimesNet_ETTh1_ftM_sl96_ll48_pl96_dm16_nh8_el2_dl1_df32_fc3_ebtimeF_dtTrue_Exp_0>>>>>>>>>>>>>>>>>>>>>>>>>>
+train 8449
+val 2785
+test 2785
+Traceback (most recent call last):
+  File "run.py", line 149, in <module>
+    exp.train(setting)
+  File "/home/featurize/work/Time-Series-Library/exp/exp_long_term_forecasting.py", line 115, in train
+    dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+RuntimeError: CUDA error: no kernel image is available for execution on the device
+(timesnet) ➜  Time-Series-Library git:(main) ✗ ./TimesNet_ETTh1.sh 
+Args in experiment:
+Basic Config
+  Task Name:          long_term_forecast  Is Training:        1                   
+  Model ID:           ETTh1_96_96         Model:              TimesNet            
+
+Data Loader
+  Data:               ETTh1               Root Path:          /home/featurize/data/ETT-small/
+  Data Path:          ETTh1.csv           Features:           M                   
+  Target:             OT                  Freq:               h                   
+  Checkpoints:        ./checkpoints/      
+
+Forecasting Task
+  Seq Len:            96                  Label Len:          48                  
+  Pred Len:           96                  Seasonal Patterns:  Monthly             
+  Inverse:            0                   
+
+Model Parameters
+  Top k:              5                   Num Kernels:        6                   
+  Enc In:             7                   Dec In:             7                   
+  C Out:              7                   d model:            16                  
+  n heads:            8                   e layers:           2                   
+  d layers:           1                   d FF:               32                  
+  Moving Avg:         25                  Factor:             3                   
+  Distil:             1                   Dropout:            0.1                 
+  Embed:              timeF               Activation:         gelu                
+  Output Attention:   0                   
+
+Run Parameters
+  Num Workers:        10                  Itr:                1                   
+  Train Epochs:       10                  Batch Size:         32                  
+  Patience:           3                   Learning Rate:      0.0001              
+  Des:                Exp                 Loss:               MSE                 
+  Lradj:              type1               Use Amp:            0                   
+
+GPU
+  Use GPU:            0                   GPU:                0                   
+  Use Multi GPU:      0                   Devices:            0,1,2,3             
+
+De-stationary Projector Params
+  P Hidden Dims:      128, 128            P Hidden Layers:    2                   
+
+Use CPU
+>>>>>>>start training : long_term_forecast_ETTh1_96_96_TimesNet_ETTh1_ftM_sl96_ll48_pl96_dm16_nh8_el2_dl1_df32_fc3_ebtimeF_dtTrue_Exp_0>>>>>>>>>>>>>>>>>>>>>>>>>>
+train 8449
+val 2785
+test 2785
+        iters: 100, epoch: 1 | loss: 0.3861034
+        speed: 0.9543s/iter; left time: 2424.8701s
+        iters: 200, epoch: 1 | loss: 0.4011159
+        speed: 0.8402s/iter; left time: 2050.9923s
+^CTraceback (most recent call last):
+  File "run.py", line 149, in <module>
+    exp.train(setting)
+  File "/home/featurize/work/Time-Series-Library/exp/exp_long_term_forecasting.py", line 156, in train
+    loss.backward()
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/torch/tensor.py", line 221, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph)
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/torch/autograd/__init__.py", line 130, in backward
+    Variable._execution_engine.run_backward(
+KeyboardInterrupt
+
+(timesnet) ➜  Time-Series-Library git:(main) ✗ >....                                                                                          
+  --seq_len 96 \
+  --label_len 48 \
+  --pred_len 96 \
+  --e_layers 2 \
+  --d_layers 1 \
+  --factor 3 \
+  --enc_in 7 \
+  --dec_in 7 \
+  --c_out 7 \
+  --d_model 16 \
+  --d_ff 32 \
+  --des 'Exp' \
+  --itr 1 \
+  --top_k 5
+
+Args in experiment:
+Basic Config
+  Task Name:          long_term_forecast  Is Training:        1                   
+  Model ID:           ETTh1_96_96         Model:              TimesNet            
+
+Data Loader
+  Data:               ETTh1               Root Path:          /home/featurize/data/ETT-small/
+  Data Path:          ETTh1.csv           Features:           M                   
+  Target:             OT                  Freq:               h                   
+  Checkpoints:        ./checkpoints/      
+
+Forecasting Task
+  Seq Len:            96                  Label Len:          48                  
+  Pred Len:           96                  Seasonal Patterns:  Monthly             
+  Inverse:            0                   
+
+Model Parameters
+  Top k:              5                   Num Kernels:        6                   
+  Enc In:             7                   Dec In:             7                   
+  C Out:              7                   d model:            16                  
+  n heads:            8                   e layers:           2                   
+  d layers:           1                   d FF:               32                  
+  Moving Avg:         25                  Factor:             3                   
+  Distil:             1                   Dropout:            0.1                 
+  Embed:              timeF               Activation:         gelu                
+  Output Attention:   0                   
+
+Run Parameters
+  Num Workers:        10                  Itr:                1                   
+  Train Epochs:       10                  Batch Size:         32                  
+  Patience:           3                   Learning Rate:      0.0001              
+  Des:                Exp                 Loss:               MSE                 
+  Lradj:              type1               Use Amp:            0                   
+
+GPU
+  Use GPU:            1                   GPU:                0                   
+  Use Multi GPU:      0                   Devices:            0,1,2,3             
+
+De-stationary Projector Params
+  P Hidden Dims:      128, 128            P Hidden Layers:    2                   
+
+Use GPU: cuda:0
+>>>>>>>start training : long_term_forecast_ETTh1_96_96_TimesNet_ETTh1_ftM_sl96_ll48_pl96_dm16_nh8_el2_dl1_df32_fc3_ebtimeF_dtTrue_Exp_0>>>>>>>>>>>>>>>>>>>>>>>>>>
+train 8449
+val 2785
+test 2785
+Traceback (most recent call last):
+  File "run.py", line 149, in <module>
+    exp.train(setting)
+  File "/home/featurize/work/Time-Series-Library/exp/exp_long_term_forecasting.py", line 115, in train
+    dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+RuntimeError: CUDA error: no kernel image is available for execution on the device
+(timesnet) ➜  Time-Series-Library git:(main) ✗ nvidia-smi
+Mon Jan 22 23:18:48 2024       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 525.85.05    Driver Version: 525.85.05    CUDA Version: 12.0     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  NVIDIA GeForce ...  Off  | 00000000:10:00.0 Off |                  N/A |
+| 30%   26C    P8    12W / 170W |      0MiB / 12288MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|  No running processes found                                                 |
++-----------------------------------------------------------------------------+
+(timesnet) ➜  Time-Series-Library git:(main) ✗ pip uninstall torch
+Found existing installation: torch 1.7.1
+Uninstalling torch-1.7.1:
+  Would remove:
+    /environment/miniconda3/envs/timesnet/bin/convert-caffe2-to-onnx
+    /environment/miniconda3/envs/timesnet/bin/convert-onnx-to-caffe2
+    /environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/caffe2/*
+    /environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/torch-1.7.1.dist-info/*
+    /environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/torch/*
+Proceed (Y/n)? y
+  Successfully uninstalled torch-1.7.1
+(timesnet) ➜  Time-Series-Library git:(main) ✗ pip install torch
+Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+Collecting torch
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/31/c0/6e856c0c745dffd7696ec514381befa83f3449cd914f02b0968e0ca5a244/torch-2.1.2-cp38-cp38-manylinux1_x86_64.whl (670.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 670.2/670.2 MB 50.8 MB/s eta 0:00:00
+Collecting filelock (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/81/54/84d42a0bee35edba99dee7b59a8d4970eccdd44b99fe728ed912106fc781/filelock-3.13.1-py3-none-any.whl (11 kB)
+Requirement already satisfied: typing-extensions in /environment/miniconda3/envs/timesnet/lib/python3.8/site-packages (from torch) (4.9.0)
+Requirement already satisfied: sympy in /environment/miniconda3/envs/timesnet/lib/python3.8/site-packages (from torch) (1.11.1)
+Collecting networkx (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/a8/05/9d4f9b78ead6b2661d6e8ea772e111fc4a9fbd866ad0c81906c11206b55e/networkx-3.1-py3-none-any.whl (2.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 95.3 MB/s eta 0:00:00
+Collecting jinja2 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/30/6d/6de6be2d02603ab56e72997708809e8a5b0fbfee080735109b40a3564843/Jinja2-3.1.3-py3-none-any.whl (133 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 133.2/133.2 kB 88.9 MB/s eta 0:00:00
+Collecting fsspec (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/70/25/fab23259a52ece5670dcb8452e1af34b89e6135ecc17cd4b54b4b479eac6/fsspec-2023.12.2-py3-none-any.whl (168 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 169.0/169.0 kB 93.9 MB/s eta 0:00:00
+Collecting nvidia-cuda-nvrtc-cu12==12.1.105 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/b6/9f/c64c03f49d6fbc56196664d05dba14e3a561038a81a638eeb47f4d4cfd48/nvidia_cuda_nvrtc_cu12-12.1.105-py3-none-manylinux1_x86_64.whl (23.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 23.7/23.7 MB 95.9 MB/s eta 0:00:00
+Collecting nvidia-cuda-runtime-cu12==12.1.105 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/eb/d5/c68b1d2cdfcc59e72e8a5949a37ddb22ae6cade80cd4a57a84d4c8b55472/nvidia_cuda_runtime_cu12-12.1.105-py3-none-manylinux1_x86_64.whl (823 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 823.6/823.6 kB 112.5 MB/s eta 0:00:00
+Collecting nvidia-cuda-cupti-cu12==12.1.105 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/7e/00/6b218edd739ecfc60524e585ba8e6b00554dd908de2c9c66c1af3e44e18d/nvidia_cuda_cupti_cu12-12.1.105-py3-none-manylinux1_x86_64.whl (14.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.1/14.1 MB 100.3 MB/s eta 0:00:00
+Collecting nvidia-cudnn-cu12==8.9.2.26 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/ff/74/a2e2be7fb83aaedec84f391f082cf765dfb635e7caa9b49065f73e4835d8/nvidia_cudnn_cu12-8.9.2.26-py3-none-manylinux1_x86_64.whl (731.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 731.7/731.7 MB 49.7 MB/s eta 0:00:00
+Collecting nvidia-cublas-cu12==12.1.3.1 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/37/6d/121efd7382d5b0284239f4ab1fc1590d86d34ed4a4a2fdb13b30ca8e5740/nvidia_cublas_cu12-12.1.3.1-py3-none-manylinux1_x86_64.whl (410.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 410.6/410.6 MB 61.6 MB/s eta 0:00:00
+Collecting nvidia-cufft-cu12==11.0.2.54 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/86/94/eb540db023ce1d162e7bea9f8f5aa781d57c65aed513c33ee9a5123ead4d/nvidia_cufft_cu12-11.0.2.54-py3-none-manylinux1_x86_64.whl (121.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 121.6/121.6 MB 79.1 MB/s eta 0:00:00
+Collecting nvidia-curand-cu12==10.3.2.106 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/44/31/4890b1c9abc496303412947fc7dcea3d14861720642b49e8ceed89636705/nvidia_curand_cu12-10.3.2.106-py3-none-manylinux1_x86_64.whl (56.5 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 56.5/56.5 MB 98.8 MB/s eta 0:00:00
+Collecting nvidia-cusolver-cu12==11.4.5.107 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/bc/1d/8de1e5c67099015c834315e333911273a8c6aaba78923dd1d1e25fc5f217/nvidia_cusolver_cu12-11.4.5.107-py3-none-manylinux1_x86_64.whl (124.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 124.2/124.2 MB 81.7 MB/s eta 0:00:00
+Collecting nvidia-cusparse-cu12==12.1.0.106 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/65/5b/cfaeebf25cd9fdec14338ccb16f6b2c4c7fa9163aefcf057d86b9cc248bb/nvidia_cusparse_cu12-12.1.0.106-py3-none-manylinux1_x86_64.whl (196.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 196.0/196.0 MB 80.3 MB/s eta 0:00:00
+Collecting nvidia-nccl-cu12==2.18.1 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/a4/05/23f8f38eec3d28e4915725b233c24d8f1a33cb6540a882f7b54be1befa02/nvidia_nccl_cu12-2.18.1-py3-none-manylinux1_x86_64.whl (209.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 209.8/209.8 MB 82.6 MB/s eta 0:00:00
+Collecting nvidia-nvtx-cu12==12.1.105 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/da/d3/8057f0587683ed2fcd4dbfbdfdfa807b9160b809976099d36b8f60d08f03/nvidia_nvtx_cu12-12.1.105-py3-none-manylinux1_x86_64.whl (99 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 99.1/99.1 kB 77.5 MB/s eta 0:00:00
+Collecting triton==2.1.0 (from torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/72/98/34f43ed68ee6455ea874f749a5515c0600243186301ecd83819d942ce08a/triton-2.1.0-0-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (89.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 89.2/89.2 MB 94.4 MB/s eta 0:00:00
+Collecting nvidia-nvjitlink-cu12 (from nvidia-cusolver-cu12==11.4.5.107->torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/1e/07/bf730d44c2fe1b676ad9cc2be5f5f861eb5d153fb6951987a2d6a96379a9/nvidia_nvjitlink_cu12-12.3.101-py3-none-manylinux1_x86_64.whl (20.5 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 20.5/20.5 MB 101.3 MB/s eta 0:00:00
+Collecting MarkupSafe>=2.0 (from jinja2->torch)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/35/21/45495e6d8fd4fedad477b9fb97905279433f58c141e1b4fa7c752f1bc5ca/MarkupSafe-2.1.4-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (26 kB)
+Requirement already satisfied: mpmath>=0.19 in /environment/miniconda3/envs/timesnet/lib/python3.8/site-packages (from sympy->torch) (1.3.0)
+Installing collected packages: nvidia-nvtx-cu12, nvidia-nvjitlink-cu12, nvidia-nccl-cu12, nvidia-curand-cu12, nvidia-cufft-cu12, nvidia-cuda-runtime-cu12, nvidia-cuda-nvrtc-cu12, nvidia-cuda-cupti-cu12, nvidia-cublas-cu12, networkx, MarkupSafe, fsspec, filelock, triton, nvidia-cusparse-cu12, nvidia-cudnn-cu12, jinja2, nvidia-cusolver-cu12, torch
+
+
+
+Successfully installed MarkupSafe-2.1.4 filelock-3.13.1 fsspec-2023.12.2 jinja2-3.1.3 networkx-3.1 nvidia-cublas-cu12-12.1.3.1 nvidia-cuda-cupti-cu12-12.1.105 nvidia-cuda-nvrtc-cu12-12.1.105 nvidia-cuda-runtime-cu12-12.1.105 nvidia-cudnn-cu12-8.9.2.26 nvidia-cufft-cu12-11.0.2.54 nvidia-curand-cu12-10.3.2.106 nvidia-cusolver-cu12-11.4.5.107 nvidia-cusparse-cu12-12.1.0.106 nvidia-nccl-cu12-2.18.1 nvidia-nvjitlink-cu12-12.3.101 nvidia-nvtx-cu12-12.1.105 torch-2.1.2 triton-2.1.0
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ model_name=TimesNet
+
+
+python -u run.py \
+  --task_name long_term_forecast \
+  --is_training 1 \
+  --root_path /home/featurize/data/ETT-small/ \
+  --data_path ETTh1.csv \
+  --model_id ETTh1_96_96 \
+  --model $model_name \
+  --data ETTh1 \
+  --features M \
+  --seq_len 96 \
+  --label_len 48 \
+  --pred_len 96 \
+  --e_layers 2 \                                                                                                                        <....
+Args in experiment:
+Basic Config
+  Task Name:          long_term_forecast  Is Training:        1                   
+  Model ID:           ETTh1_96_96         Model:              TimesNet            
+
+Data Loader
+  Data:               ETTh1               Root Path:          /home/featurize/data/ETT-small/
+  Data Path:          ETTh1.csv           Features:           M                   
+  Target:             OT                  Freq:               h                   
+  Checkpoints:        ./checkpoints/      
+
+Forecasting Task
+  Seq Len:            96                  Label Len:          48                  
+  Pred Len:           96                  Seasonal Patterns:  Monthly             
+  Inverse:            0                   
+
+Model Parameters
+  Top k:              5                   Num Kernels:        6                   
+  Enc In:             7                   Dec In:             7                   
+  C Out:              7                   d model:            16                  
+  n heads:            8                   e layers:           2                   
+  d layers:           1                   d FF:               32                  
+  Moving Avg:         25                  Factor:             3                   
+  Distil:             1                   Dropout:            0.1                 
+  Embed:              timeF               Activation:         gelu                
+  Output Attention:   0                   
+
+Run Parameters
+  Num Workers:        10                  Itr:                1                   
+  Train Epochs:       10                  Batch Size:         32                  
+  Patience:           3                   Learning Rate:      0.0001              
+  Des:                Exp                 Loss:               MSE                 
+  Lradj:              type1               Use Amp:            0                   
+
+GPU
+  Use GPU:            1                   GPU:                0                   
+  Use Multi GPU:      0                   Devices:            0,1,2,3             
+
+De-stationary Projector Params
+  P Hidden Dims:      128, 128            P Hidden Layers:    2                   
+
+Use GPU: cuda:0
+>>>>>>>start training : long_term_forecast_ETTh1_96_96_TimesNet_ETTh1_ftM_sl96_ll48_pl96_dm16_nh8_el2_dl1_df32_fc3_ebtimeF_dtTrue_Exp_0>>>>>>>>>>>>>>>>>>>>>>>>>>
+train 8449
+val 2785
+test 2785
+        iters: 100, epoch: 1 | loss: 0.4701954
+        speed: 0.1567s/iter; left time: 398.1087s
+        iters: 200, epoch: 1 | loss: 0.4496157
+        speed: 0.0809s/iter; left time: 197.4478s
+Epoch: 1 cost time: 28.812398433685303
+Epoch: 1, Steps: 264 | Train Loss: 0.4964186 Vali Loss: 0.8412075 Test Loss: 0.4290477
+Validation loss decreased (inf --> 0.841208).  Saving model ...
+Updating learning rate to 0.0001
+        iters: 100, epoch: 2 | loss: 0.4119574
+        speed: 0.8586s/iter; left time: 1955.0869s
+        iters: 200, epoch: 2 | loss: 0.3616744
+        speed: 0.0834s/iter; left time: 181.6562s
+Epoch: 2 cost time: 22.466583967208862
+Epoch: 2, Steps: 264 | Train Loss: 0.3958687 Vali Loss: 0.8106949 Test Loss: 0.3944519
+Validation loss decreased (0.841208 --> 0.810695).  Saving model ...
+Updating learning rate to 5e-05
+        iters: 100, epoch: 3 | loss: 0.3440181
+        speed: 0.8565s/iter; left time: 1724.0987s
+        iters: 200, epoch: 3 | loss: 0.3323533
+        speed: 0.0829s/iter; left time: 158.5479s
+Epoch: 3 cost time: 22.526684999465942
+Epoch: 3, Steps: 264 | Train Loss: 0.3778945 Vali Loss: 0.7864138 Test Loss: 0.3897454
+Validation loss decreased (0.810695 --> 0.786414).  Saving model ...
+Updating learning rate to 2.5e-05
+        iters: 100, epoch: 4 | loss: 0.3821933
+        speed: 0.8503s/iter; left time: 1487.1023s
+        iters: 200, epoch: 4 | loss: 0.3905018
+        speed: 0.0833s/iter; left time: 137.2875s
+Epoch: 4 cost time: 22.321147203445435
+Epoch: 4, Steps: 264 | Train Loss: 0.3691365 Vali Loss: 0.7790185 Test Loss: 0.3896550
+Validation loss decreased (0.786414 --> 0.779018).  Saving model ...
+Updating learning rate to 1.25e-05
+        iters: 100, epoch: 5 | loss: 0.3561923
+        speed: 0.8177s/iter; left time: 1214.3409s
+        iters: 200, epoch: 5 | loss: 0.3737366
+        speed: 0.0812s/iter; left time: 112.4894s
+Epoch: 5 cost time: 22.70723247528076
+Epoch: 5, Steps: 264 | Train Loss: 0.3654325 Vali Loss: 0.7777926 Test Loss: 0.3892828
+Validation loss decreased (0.779018 --> 0.777793).  Saving model ...
+Updating learning rate to 6.25e-06
+        iters: 100, epoch: 6 | loss: 0.3714862
+        speed: 0.9535s/iter; left time: 1164.2368s
+        iters: 200, epoch: 6 | loss: 0.3745981
+        speed: 0.0847s/iter; left time: 94.9594s
+Epoch: 6 cost time: 23.291256427764893
+Epoch: 6, Steps: 264 | Train Loss: 0.3636996 Vali Loss: 0.7769647 Test Loss: 0.3890985
+Validation loss decreased (0.777793 --> 0.776965).  Saving model ...
+Updating learning rate to 3.125e-06
+        iters: 100, epoch: 7 | loss: 0.4107396
+        speed: 0.8545s/iter; left time: 817.7170s
+        iters: 200, epoch: 7 | loss: 0.3193023
+        speed: 0.0799s/iter; left time: 68.5018s
+Epoch: 7 cost time: 21.5558979511261
+Epoch: 7, Steps: 264 | Train Loss: 0.3627003 Vali Loss: 0.7762706 Test Loss: 0.3890601
+Validation loss decreased (0.776965 --> 0.776271).  Saving model ...
+Updating learning rate to 1.5625e-06
+        iters: 100, epoch: 8 | loss: 0.3242199
+        speed: 0.8574s/iter; left time: 594.1864s
+        iters: 200, epoch: 8 | loss: 0.3191355
+        speed: 0.0797s/iter; left time: 47.2880s
+Epoch: 8 cost time: 21.834460973739624
+Epoch: 8, Steps: 264 | Train Loss: 0.3623946 Vali Loss: 0.7759928 Test Loss: 0.3890505
+Validation loss decreased (0.776271 --> 0.775993).  Saving model ...
+Updating learning rate to 7.8125e-07
+        iters: 100, epoch: 9 | loss: 0.3794779
+        speed: 0.8609s/iter; left time: 369.3117s
+        iters: 200, epoch: 9 | loss: 0.3623648
+        speed: 0.0848s/iter; left time: 27.9148s
+Epoch: 9 cost time: 23.004071950912476
+Epoch: 9, Steps: 264 | Train Loss: 0.3621961 Vali Loss: 0.7756003 Test Loss: 0.3890168
+Validation loss decreased (0.775993 --> 0.775600).  Saving model ...
+Updating learning rate to 3.90625e-07
+
+        iters: 100, epoch: 10 | loss: 0.3804605
+        speed: 0.8391s/iter; left time: 138.4543s
+        iters: 200, epoch: 10 | loss: 0.4601188
+        speed: 0.0757s/iter; left time: 4.9185s
+Epoch: 10 cost time: 20.764032125473022
+Epoch: 10, Steps: 264 | Train Loss: 0.3619605 Vali Loss: 0.7758422 Test Loss: 0.3890000
+EarlyStopping counter: 1 out of 3
+Updating learning rate to 1.953125e-07
+>>>>>>>testing : long_term_forecast_ETTh1_96_96_TimesNet_ETTh1_ftM_sl96_ll48_pl96_dm16_nh8_el2_dl1_df32_fc3_ebtimeF_dtTrue_Exp_0<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+test 2785
+
+
+
+
+test shape: (2785, 1, 96, 7) (2785, 1, 96, 7)
+test shape: (2785, 96, 7) (2785, 96, 7)
+mse:0.38901692628860474, mae:0.4120004177093506
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ ./TimesNet_ETTh1.sh 
+Args in experiment:
+Basic Config
+  Task Name:          long_term_forecast  Is Training:        1                   
+  Model ID:           ETTh1_96_96         Model:              TimesNet            
+
+Data Loader
+  Data:               ETTh1               Root Path:          /home/featurize/data/ETT-small/
+  Data Path:          ETTh1.csv           Features:           M                   
+  Target:             OT                  Freq:               h                   
+  Checkpoints:        ./checkpoints/      
+
+Forecasting Task
+  Seq Len:            96                  Label Len:          48                  
+  Pred Len:           96                  Seasonal Patterns:  Monthly             
+  Inverse:            0                   
+
+Model Parameters
+  Top k:              5                   Num Kernels:        6                   
+  Enc In:             7                   Dec In:             7                   
+  C Out:              7                   d model:            16                  
+  n heads:            8                   e layers:           2                   
+  d layers:           1                   d FF:               32                  
+  Moving Avg:         25                  Factor:             3                   
+  Distil:             1                   Dropout:            0.1                 
+  Embed:              timeF               Activation:         gelu                
+  Output Attention:   0                   
+
+Run Parameters
+  Num Workers:        10                  Itr:                1                   
+  Train Epochs:       10                  Batch Size:         32                  
+  Patience:           3                   Learning Rate:      0.0001              
+  Des:                Exp                 Loss:               MSE                 
+  Lradj:              type1               Use Amp:            0                   
+
+GPU
+  Use GPU:            0                   GPU:                0                   
+  Use Multi GPU:      0                   Devices:            0,1,2,3             
+
+De-stationary Projector Params
+  P Hidden Dims:      128, 128            P Hidden Layers:    2                   
+
+Use CPU
+>>>>>>>start training : long_term_forecast_ETTh1_96_96_TimesNet_ETTh1_ftM_sl96_ll48_pl96_dm16_nh8_el2_dl1_df32_fc3_ebtimeF_dtTrue_Exp_0>>>>>>>>>>>>>>>>>>>>>>>>>>
+train 8449
+val 2785
+test 2785
+        iters: 100, epoch: 1 | loss: 0.4767376
+        speed: 0.7997s/iter; left time: 2032.0919s
+        iters: 200, epoch: 1 | loss: 0.4500062
+        speed: 0.6780s/iter; left time: 1654.9807s
+Epoch: 1 cost time: 190.75242590904236
+Epoch: 1, Steps: 264 | Train Loss: 0.4993706 Vali Loss: 0.8418611 Test Loss: 0.4295162
+Validation loss decreased (inf --> 0.841861).  Saving model ...
+Updating learning rate to 0.0001
+        iters: 100, epoch: 2 | loss: 0.3881729
+        speed: 2.3868s/iter; left time: 5434.8574s
+        iters: 200, epoch: 2 | loss: 0.4334183
+        speed: 0.6494s/iter; left time: 1413.8492s
+Epoch: 2 cost time: 173.2789077758789
+Epoch: 2, Steps: 264 | Train Loss: 0.3956983 Vali Loss: 0.8034449 Test Loss: 0.3943340
+Validation loss decreased (0.841861 --> 0.803445).  Saving model ...
+Updating learning rate to 5e-05
+        iters: 100, epoch: 3 | loss: 0.3717044
+        speed: 2.3945s/iter; left time: 4820.2090s
+        iters: 200, epoch: 3 | loss: 0.3466488
+        speed: 0.6735s/iter; left time: 1288.3127s
+Epoch: 3 cost time: 177.56008505821228
+Epoch: 3, Steps: 264 | Train Loss: 0.3781273 Vali Loss: 0.7926254 Test Loss: 0.3884869
+Validation loss decreased (0.803445 --> 0.792625).  Saving model ...
+Updating learning rate to 2.5e-05
+        iters: 100, epoch: 4 | loss: 0.4835221
+        speed: 2.5223s/iter; left time: 4411.4502s
+
+
+
+
+
+
+^CTraceback (most recent call last):
+  File "run.py", line 149, in <module>
+    exp.train(setting)
+  File "/home/featurize/work/Time-Series-Library/exp/exp_long_term_forecasting.py", line 156, in train
+    loss.backward()
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/torch/_tensor.py", line 492, in backward
+    torch.autograd.backward(
+  File "/environment/miniconda3/envs/timesnet/lib/python3.8/site-packages/torch/autograd/__init__.py", line 251, in backward
+    Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+KeyboardInterrupt
+RuntimeError: CUDA error: no kernel image is available for execution on the device
+(timesnet) ➜  Time-Series-Library git:(main) ✗ RuntimeError: CUDA error: no kernel image is available for execution on the device
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 
+(timesnet) ➜  Time-Series-Library git:(main) ✗ 

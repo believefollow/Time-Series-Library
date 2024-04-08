@@ -191,7 +191,7 @@ class Exp_Anomaly_Detection(Exp_Basic):
         print("gt:   ", gt.shape)
 
         accuracy = accuracy_score(gt, pred)
-        precision, recall, f_score, support = precision_recall_fscore_support(gt, pred, average='binary')
+        precision, recall, f_score, support = precision_recall_fscore_support(gt, pred, average='weighted')
         print("Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
             accuracy, precision,
             recall, f_score))

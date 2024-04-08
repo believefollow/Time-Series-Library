@@ -12,6 +12,9 @@ from data_provider.uea import subsample, interpolate_missing, Normalizer
 from sktime.datasets import load_from_tsfile_to_dataframe
 import warnings
 
+from sklearn.preprocessing import LabelEncoder
+
+
 warnings.filterwarnings('ignore')
 
 
@@ -595,6 +598,73 @@ class SWATSegLoader(Dataset):
             return np.float32(self.test[
                               index // self.step * self.win_size:index // self.step * self.win_size + self.win_size]), np.float32(
                 self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
+
+class ChargerSegLoader(Dataset):
+    def __init__(self, root_path, win_size, step=1, flag="train"):
+        self.flag = flag
+        self.step = step
+        self.win_size = win_size
+        self.scaler = StandardScaler()
+
+        train_data_origin = pd.read_excel(os.path.join(root_path, 'charger_train.xlsx'), header=3, usecols=['开始SOC', '结束SOC', '充电时长（分钟）', '尖电量（kWh）', '峰电量（kWh）', '平电量（kWh）', '低谷电量（kWh）', '总电量（kWh）', '应付（元）'], na_values='#N')
+        test_data_origin = pd.read_excel(os.path.join(root_path, 'charger_test.xlsx'), header=3, usecols=['开始SOC', '结束SOC', '充电时长（分钟）', '尖电量（kWh）', '峰电量（kWh）', '平电量（kWh）', '低谷电量（kWh）', '总电量（kWh）', '应付（元）'], na_values='#N')
+        
+        # 识别数据帧中所有的字符串类型特征
+        str_columns = train_data_origin.select_dtypes(include=['object']).columns
+
+        # 对这些字符串类型特征应用One-Hot编码
+        train_data = pd.get_dummies(train_data_origin, columns=str_columns)
+
+        # 识别数据帧中所有的字符串类型特征
+        str_columns = test_data_origin.select_dtypes(include=['object']).columns
+
+        # 对这些字符串类型特征应用One-Hot编码
+        test_data = pd.get_dummies(test_data_origin, columns=str_columns)
+
+        labels = test_data.values[:, -1:]
+        train_data = train_data.values[:, :-1]
+        test_data = test_data.values[:, :-1]
+
+        self.scaler.fit(train_data)
+        train_data = self.scaler.transform(train_data)
+        test_data = self.scaler.transform(test_data)
+        self.train = train_data
+        self.test = test_data
+        data_len = len(self.train)
+        self.val = self.train[(int)(data_len * 0.5):]
+        self.test_labels = labels
+        print("test:", self.test.shape)
+        print("train:", self.train.shape)
+
+    def __len__(self):
+        """
+        Number of images in the object dataset.
+        """
+        if self.flag == "train":
+            return (self.train.shape[0] - self.win_size) // self.step + 1
+        elif (self.flag == 'val'):
+            return (self.val.shape[0] - self.win_size) // self.step + 1
+        elif (self.flag == 'test'):
+            return (self.test.shape[0] - self.win_size) // self.step + 1
+        else:
+            return (self.test.shape[0] - self.win_size) // self.win_size + 1
+
+    def __getitem__(self, index):
+        index = index * self.step
+        if self.flag == "train":
+            return np.float32(self.train[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+        elif (self.flag == 'val'):
+            return np.float32(self.val[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+        elif (self.flag == 'test'):
+            return np.float32(self.test[index:index + self.win_size]), np.float32(
+                self.test_labels[index:index + self.win_size])
+        else:
+            return np.float32(self.test[
+                              index // self.step * self.win_size:index // self.step * self.win_size + self.win_size]), np.float32(
+                self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
+
+
+
 
 
 class UEAloader(Dataset):

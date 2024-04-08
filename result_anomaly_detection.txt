@@ -1,0 +1,15 @@
+anomaly_detection_CHG_TimesNet_CHG_ftM_sl100_ll48_pl0_dm8_nh8_el3_dl1_df8_fc1_ebtimeF_dtTrue_test_0  
+Accuracy : 0.0088, Precision : 0.0001, Recall : 0.0088, F-score : 0.0002 
+
+anomaly_detection_CHG_TimesNet_CHG_ftM_sl100_ll48_pl0_dm16_nh8_el3_dl1_df16_fc1_ebtimeF_dtTrue_test_0  
+Accuracy : 0.0088, Precision : 0.0001, Recall : 0.0088, F-score : 0.0002 
+
+anomaly_detection_CHG_TimesNet_CHG_ftM_sl100_ll48_pl0_dm32_nh8_el3_dl1_df32_fc1_ebtimeF_dtTrue_test_0  
+Accuracy : 0.0088, Precision : 0.0001, Recall : 0.0088, F-score : 0.0002 
+
+anomaly_detection_CHG_TimesNet_CHG_ftM_sl100_ll48_pl0_dm8_nh8_el3_dl1_df8_fc1_ebtimeF_dtTrue_test_0  
+Accuracy : 0.0088, Precision : 0.0001, Recall : 0.0088, F-score : 0.0002 
+
+anomaly_detection_CHG_TimesNet_CHG_ftM_sl100_ll48_pl0_dm8_nh8_el3_dl1_df8_fc1_ebtimeF_dtTrue_test_0  
+Accuracy : 0.0088, Precision : 0.0001, Recall : 0.0088, F-score : 0.0002 
+
