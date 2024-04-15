@@ -601,25 +601,31 @@ class SWATSegLoader(Dataset):
 
 class ChargerSegLoader(Dataset):
     def __init__(self, root_path, win_size, step=1, flag="train"):
+        
         self.flag = flag
         self.step = step
         self.win_size = win_size
         self.scaler = StandardScaler()
-
-        train_data_origin = pd.read_excel(os.path.join(root_path, 'charger_train.xlsx'), header=3, usecols=['开始SOC', '结束SOC', '充电时长（分钟）', '尖电量（kWh）', '峰电量（kWh）', '平电量（kWh）', '低谷电量（kWh）', '总电量（kWh）', '应付（元）'], na_values='#N')
-        test_data_origin = pd.read_excel(os.path.join(root_path, 'charger_test.xlsx'), header=3, usecols=['开始SOC', '结束SOC', '充电时长（分钟）', '尖电量（kWh）', '峰电量（kWh）', '平电量（kWh）', '低谷电量（kWh）', '总电量（kWh）', '应付（元）'], na_values='#N')
-        
-        # 识别数据帧中所有的字符串类型特征
-        str_columns = train_data_origin.select_dtypes(include=['object']).columns
+        data = np.load(os.path.join(root_path, "charger1_train.npy"))
+        self.scaler.fit(data)
+        data = self.scaler.transform(data)
+        test_data = np.load(os.path.join(root_path, "charger1_test.npy"))
+        self.test = self.scaler.transform(test_data)
+        self.train = data
+        data_len = len(self.train)
+        self.val = self.train[(int)(data_len * 0.8):]
+        self.test_labels = np.load(os.path.join(root_path, "charger1_test_label.npy"))
+        print("test:", self.test.shape)
+        print("train:", self.train.shape)
 
         # 对这些字符串类型特征应用One-Hot编码
-        train_data = pd.get_dummies(train_data_origin, columns=str_columns)
+        train_data = pd.get_dummies(self.train, columns=str_columns)
 
         # 识别数据帧中所有的字符串类型特征
-        str_columns = test_data_origin.select_dtypes(include=['object']).columns
+        str_columns = self.test.select_dtypes(include=['object']).columns
 
         # 对这些字符串类型特征应用One-Hot编码
-        test_data = pd.get_dummies(test_data_origin, columns=str_columns)
+        test_data = pd.get_dummies(self.test, columns=str_columns)
 
         labels = test_data.values[:, -1:]
         train_data = train_data.values[:, :-1]
