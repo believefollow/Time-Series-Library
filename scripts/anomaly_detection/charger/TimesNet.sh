@@ -10,11 +10,11 @@ python -u run.py \
   --features M \
   --seq_len 100 \
   --pred_len 0 \
-  --d_model 8 \
-  --d_ff 8 \
+  --d_model 172 \
+  --d_ff 172 \
   --e_layers 3 \
-  --enc_in 8 \
-  --c_out 8 \
+  --enc_in 172 \
+  --c_out 172 \
   --top_k 3 \
   --anomaly_ratio 1 \
   --batch_size 128 \
@@ -33,8 +33,8 @@ python -u run.py \
   --d_model 16 \
   --d_ff 16 \
   --e_layers 3 \
-  --enc_in 8 \
-  --c_out 8 \
+  --enc_in 172 \
+  --c_out 172 \
   --top_k 3 \
   --anomaly_ratio 1 \
   --batch_size 128 \
@@ -53,8 +53,8 @@ python -u run.py \
   --d_model 32 \
   --d_ff 32 \
   --e_layers 3 \
-  --enc_in 8 \
-  --c_out 8 \
+  --enc_in 172 \
+  --c_out 172 \
   --top_k 3 \
   --anomaly_ratio 1 \
   --batch_size 128 \
@@ -73,8 +73,8 @@ python -u run.py \
   --d_model 64 \
   --d_ff 64 \
   --e_layers 3 \
-  --enc_in 8 \
-  --c_out 8 \
+  --enc_in 172 \
+  --c_out 172 \
   --top_k 3 \
   --anomaly_ratio 1 \
   --batch_size 128 \
@@ -90,11 +90,11 @@ python -u run.py \
   --features M \
   --seq_len 100 \
   --pred_len 0 \
-  --d_model 8 \
-  --d_ff 8 \
+  --d_model 172 \
+  --d_ff 172 \
   --e_layers 2 \
-  --enc_in 8 \
-  --c_out 8 \
+  --enc_in 172 \
+  --c_out 172 \
   --top_k 3 \
   --anomaly_ratio 1 \
   --batch_size 128 \
@@ -113,8 +113,8 @@ python -u run.py \
   --d_model 16 \
   --d_ff 16 \
   --e_layers 2 \
-  --enc_in 8 \
-  --c_out 8 \
+  --enc_in 172 \
+  --c_out 172 \
   --top_k 3 \
   --anomaly_ratio 1 \
   --batch_size 128 \
@@ -133,8 +133,8 @@ python -u run.py \
   --d_model 32 \
   --d_ff 32 \
   --e_layers 2 \
-  --enc_in 8 \
-  --c_out 8 \
+  --enc_in 172 \
+  --c_out 172 \
   --top_k 3 \
   --anomaly_ratio 1 \
   --batch_size 128 \
@@ -153,8 +153,8 @@ python -u run.py \
   --d_model 64 \
   --d_ff 64 \
   --e_layers 2 \
-  --enc_in 8 \
-  --c_out 8 \
+  --enc_in 172 \
+  --c_out 172 \
   --top_k 3 \
   --anomaly_ratio 1 \
   --batch_size 128 \
